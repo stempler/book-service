@@ -39,11 +39,14 @@ public class BooksDB {
   }
 
   @SuppressWarnings("unchecked")
+  //books with no published date appear first
+  //this equals to having books with no published date get the creation date and then would be the newest
+  //this assumption can be changed though.
   public void getBooks(Handler<AsyncResult<JsonArray>> handler) {
     runTask(future -> {
       ArrayList sorted_books = books.stream()
         .map(item -> (JsonObject) item)
-        .sorted(Comparator.comparing(book -> book.getString("published"), Comparator.reverseOrder()))
+        .sorted(Comparator.comparing(book -> book.getString("published", "null"), Comparator.reverseOrder()))
         .collect(toCollection(ArrayList::new));
 
       JsonArray array = new JsonArray(sorted_books);

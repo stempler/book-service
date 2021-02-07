@@ -24,6 +24,7 @@ public class BookService {
   }
 
   private BooksDB books;
+  private final static int featured_limit = 10;
 
   private void run() throws IOException {
     Vertx vertx = Vertx.vertx();
@@ -82,7 +83,6 @@ public class BookService {
   }
 
   private void getFeaturedBook(RoutingContext rc) {
-    final int featured_limit = 10;
     books.getBooks(res -> {
       sendJsonResponse(rc,
         200,
