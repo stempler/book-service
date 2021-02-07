@@ -2,8 +2,8 @@ package io.vertx.example;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Optional;
-
 import org.apache.commons.io.IOUtils;
 
 import io.vertx.core.AsyncResult;
@@ -12,6 +12,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+
+import static java.util.stream.Collectors.toCollection;
 
 /**
  * Very simple books "database".
@@ -37,9 +39,18 @@ public class BooksDB {
   }
 
   @SuppressWarnings("unchecked")
+  //books with no published date appear first
+  //this equals to having books with no published date get the creation date and then would be the newest
+  //this assumption can be changed though.
   public void getBooks(Handler<AsyncResult<JsonArray>> handler) {
     runTask(future -> {
-      JsonArray array = new JsonArray(new ArrayList<>(books.getList()));
+      ArrayList sorted_books = books.stream()
+        .map(item -> (JsonObject) item)
+        .sorted(Comparator.comparing(book -> book.getString("published", "null"), Comparator.reverseOrder()))
+        .collect(toCollection(ArrayList::new));
+
+      JsonArray array = new JsonArray(sorted_books);
+
       future.complete(array);
     }, handler);
   }
@@ -54,12 +65,12 @@ public class BooksDB {
   public void getBook(String isbn, Handler<AsyncResult<JsonObject>> handler) {
     runTask(future -> {
       Optional<JsonObject> book = books.stream()
-          .filter(item -> {
-            return item instanceof JsonObject && isbn.equals(((JsonObject) item).getString("isbn"));
-          })
-          .map(item -> (JsonObject) item)
-          .findAny();
-      future.complete(book.get());
+        .filter(item -> {
+          return item instanceof JsonObject && isbn.equals(((JsonObject) item).getString("isbn"));
+        })
+        .map(item -> (JsonObject) item)
+        .findAny();
+      future.complete(book.orElse(null));
     }, handler);
   }
 
