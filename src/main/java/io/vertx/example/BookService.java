@@ -1,6 +1,8 @@
 package io.vertx.example;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Random;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -8,6 +10,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+
+import static java.util.stream.Collectors.toCollection;
 
 
 /**
@@ -35,14 +39,14 @@ public class BookService {
     router.get("/books/featured").handler(this::getFeaturedBook);
 
     vertx.createHttpServer()
-    .requestHandler(router::accept)
-    .listen(8080, handler -> {
-      if (handler.succeeded()) {
-        System.out.println("http://localhost:8080/");
-      } else {
-        System.err.println("Failed to listen on port 8080");
-      }
-    });
+      .requestHandler(router::accept)
+      .listen(8080, handler -> {
+        if (handler.succeeded()) {
+          System.out.println("http://localhost:8080/");
+        } else {
+          System.err.println("Failed to listen on port 8080");
+        }
+      });
   }
 
   private void getHello(RoutingContext rc) {
@@ -69,12 +73,24 @@ public class BookService {
   private void getBookByIsbn(RoutingContext rc) {
     String isbn = rc.request().getParam("isbn");
     books.getBook(isbn, res -> {
-      sendJsonResponse(rc, 200, res.result());
+      if (res.result() == null) {
+        sendJsonResponse(rc, 404, "ISBN not found");
+      } else {
+        sendJsonResponse(rc, 200, res.result());
+      }
     });
   }
 
   private void getFeaturedBook(RoutingContext rc) {
-    sendErrorResponse(rc, 501, "Not implemented");
+    final int featured_limit = 10;
+    books.getBooks(res -> {
+      sendJsonResponse(rc,
+        200,
+        res.result().stream()
+          .limit(featured_limit)
+          .collect(toCollection(ArrayList::new))
+          .get(random(featured_limit)));
+    });
   }
 
   private void validateBook(JsonObject book) {
@@ -87,6 +103,12 @@ public class BookService {
     if (!book.containsKey("author")) {
       throw new IllegalStateException("Book must have an author");
     }
+  }
+
+  // This should go into a utility class or something similar
+  private int random(int upperbound) {
+    Random rand = new Random();
+    return rand.nextInt(upperbound);
   }
 
   protected void sendJsonResponse(RoutingContext rc, int code, Object json) {
